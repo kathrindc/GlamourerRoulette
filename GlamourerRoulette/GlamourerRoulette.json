@@ -1,6 +1,7 @@
 {
     "Author": "Kat",
     "Name": "Glamourer Roulette",
+    "InternalName": "Glamourer Roulette",
     "Punchline": "Can't decide what outfit to pick? Let lady luck decide!",
     "Description": "Just a randomized select for all your saved Glamourer designs",
     "ApplicableVersion": "any",
@@ -9,6 +10,9 @@
         "Glamour",
         "Social"
     ],
+    "AssemblyVersion": "9.0.0.1",
+    "DalamudApiLevel": 9,
+    "ImageUrls": null,
     "RepoUrl": "https://github.com/kathrindc/GlamourerRoulette",
     "IconUrl": "https://raw.githubusercontent.com/kathrindc/GlamourerRoulette/main/GlamourerRoulette/icon.png"
 }
