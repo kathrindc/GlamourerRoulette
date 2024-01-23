@@ -3,20 +3,13 @@
   <Import Project="Dalamud.Plugin.Bootstrap.targets"/>
 
   <PropertyGroup>
-    <Authors></Authors>
-    <Company></Company>
+    <Authors>Kat</Authors>
+    <Company>Kat</Company>
     <Version>0.0.0.1</Version>
     <Description>A sample plugin.</Description>
-    <Copyright></Copyright>
-    <PackageProjectUrl>https://github.com/goatcorp/SamplePlugin</PackageProjectUrl>
+    <Copyright>2024</Copyright>
+    <PackageProjectUrl>https://github.com/kathrindc/GlamourerRoulette</PackageProjectUrl>
     <PackageLicenseExpression>AGPL-3.0-or-later</PackageLicenseExpression>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
-
-  <ItemGroup>
-    <Content Include="..\Data\goat.png">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-      <Visible>false</Visible>
-    </Content>
-  </ItemGroup>
 </Project>

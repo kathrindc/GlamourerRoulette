@@ -1,12 +1,14 @@
 {
-  "Author": "your name here",
-  "Name": "Sample Plugin",
-  "Punchline": "A short one-liner that shows up in /xlplugins.",
-  "Description": "A description that shows up in /xlplugins. List any major slash-command(s).",
-  "ApplicableVersion": "any",
-  "Tags": [
-    "sample",
-    "plugin",
-    "goats"
-  ]
+    "Author": "Kat",
+    "Name": "Glamourer Roulette",
+    "Punchline": "Can't decide what outfit to pick? Let lady luck decide!",
+    "Description": "Just a randomized select for all your saved Glamourer designs",
+    "ApplicableVersion": "any",
+    "Tags": [
+        "Outfit",
+        "Glamour",
+        "Social"
+    ],
+    "RepoUrl": "https://github.com/kathrindc/GlamourerRoulette",
+    "IconUrl": "https://raw.githubusercontent.com/kathrindc/GlamourerRoulette/main/GlamourerRoulette/icon.png"
 }

@@ -1,25 +1,26 @@
-﻿using Dalamud.Game.Command;
+﻿using System;
+using Dalamud.Game.Command;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using System.IO;
-using Dalamud.Interface.Windowing;
+using System.Linq;
+using System.Runtime.InteropServices;
+using System.Text;
+using Dalamud.Interface.Internal.Notifications;
 using Dalamud.Plugin.Services;
-using SamplePlugin.Windows;
+using FFXIVClientStructs.FFXIV.Client.Game.UI;
 
-namespace SamplePlugin
+namespace GlamourerRoulette
 {
     public sealed class Plugin : IDalamudPlugin
     {
-        public string Name => "Sample Plugin";
-        private const string CommandName = "/pmycommand";
+        public string Name => "Glamourer Roulette";
 
         private DalamudPluginInterface PluginInterface { get; init; }
         private ICommandManager CommandManager { get; init; }
         public Configuration Configuration { get; init; }
-        public WindowSystem WindowSystem = new("SamplePlugin");
 
-        private ConfigWindow ConfigWindow { get; init; }
-        private MainWindow MainWindow { get; init; }
+        private Random Random { get; init; }
 
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
@@ -31,49 +32,52 @@ namespace SamplePlugin
             this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
             this.Configuration.Initialize(this.PluginInterface);
 
-            // you might normally want to embed resources and load them from the manifest stream
-            var imagePath = Path.Combine(PluginInterface.AssemblyLocation.Directory?.FullName!, "goat.png");
-            var goatImage = this.PluginInterface.UiBuilder.LoadImage(imagePath);
-
-            ConfigWindow = new ConfigWindow(this);
-            MainWindow = new MainWindow(this, goatImage);
-            
-            WindowSystem.AddWindow(ConfigWindow);
-            WindowSystem.AddWindow(MainWindow);
-
-            this.CommandManager.AddHandler(CommandName, new CommandInfo(OnCommand)
+            if (!PluginInterface.InstalledPlugins.Select(p => p.Name).Contains("Glamourer"))
             {
-                HelpMessage = "A useful message to display in /xlhelp"
-            });
+                PluginInterface.UiBuilder.AddNotification("Glamourer is either not installed or unavailable for other reasons. Please check your xlplugins.", "Glamourer Roulette", NotificationType.Error, 8000U);
+                throw new Exception("glamourer unavailable");
+            }
 
-            this.PluginInterface.UiBuilder.Draw += DrawUI;
-            this.PluginInterface.UiBuilder.OpenConfigUi += DrawConfigUI;
+            Random = new Random();
+
+            this.CommandManager.AddHandler("/gr", new CommandInfo(OnPickRandom)
+            {
+                HelpMessage = "Picks a random outfit from your saved Glamourer designs"
+            });
         }
 
         public void Dispose()
         {
-            this.WindowSystem.RemoveAllWindows();
+            this.CommandManager.RemoveHandler("/gr");
+        }
+
+        private void OnPickRandom(string command, string args)
+        {
+            var getDesignList = PluginInterface.GetIpcSubscriber<(string, Guid)[]>("Glamourer.GetDesignList");
+            var applyByGuid = PluginInterface.GetIpcSubscriber<Guid, string, object>("Glamourer.ApplyByGuid");
+            var designs = getDesignList.InvokeFunc();
+
+            if (!designs.Any())
+            {
+                PluginInterface.UiBuilder.AddNotification("Could not find any saved Glamourer designs", "Glamourer Roulette", NotificationType.Warning, 8000U);
+                return;
+            }
             
-            ConfigWindow.Dispose();
-            MainWindow.Dispose();
+            var index = Random.Next(0, designs.Length - 1);
+            var design = designs[index].Item2;
+            var character = GetCurrentCharacterName();
             
-            this.CommandManager.RemoveHandler(CommandName);
+            applyByGuid.InvokeAction(design, character);
         }
 
-        private void OnCommand(string command, string args)
+        private static unsafe string GetCurrentCharacterName()
         {
-            // in response to the slash command, just display our main ui
-            MainWindow.IsOpen = true;
-        }
+            var playerStatePtr = PlayerState.Instance();
+            var nameBuffer = new byte[43];
+            
+            Marshal.Copy((IntPtr)playerStatePtr->CharacterName, nameBuffer, 0, 43);
 
-        private void DrawUI()
-        {
-            this.WindowSystem.Draw();
-        }
-
-        public void DrawConfigUI()
-        {
-            ConfigWindow.IsOpen = true;
+            return Encoding.Default.GetString(nameBuffer).Replace("\0", "");
         }
     }
 }
