@@ -8,8 +8,8 @@
         "Tags": [
             "Social"
         ],
-        "AssemblyVersion": "1.0.0.1",
-        "TestingAssemblyVersion": "1.0.0.1",
+        "AssemblyVersion": "1.0.1.1",
+        "TestingAssemblyVersion": "1.0.1.1",
         "RepoUrl": "https://github.com/kathrindc/GlamourerRoulette",
         "ApplicableVersion": "any",
         "DalamudApiLevel": 9,
@@ -17,9 +17,9 @@
         "IsTestingExclusive": "False",
         "DownloadCount": 1,
         "LastUpdate": 1706044077,
-        "DownloadLinkInstall": "https://github.com/kathrindc/GlamourerRoulette/releases/download/1.0.0.1/GlamourerRoulette.zip",
-        "DownloadLinkUpdate": "https://github.com/kathrindc/GlamourerRoulette/releases/download/1.0.0.1/GlamourerRoulette.zip",
-        "DownloadLinkTesting": "https://github.com/kathrindc/GlamourerRoulette/releases/download/1.0.0.1/GlamourerRoulette.zip",
+        "DownloadLinkInstall": "https://github.com/kathrindc/GlamourerRoulette/releases/download/1.0.1.1/GlamourerRoulette.zip",
+        "DownloadLinkUpdate": "https://github.com/kathrindc/GlamourerRoulette/releases/download/1.0.1.1/GlamourerRoulette.zip",
+        "DownloadLinkTesting": "https://github.com/kathrindc/GlamourerRoulette/releases/download/1.0.1.1/GlamourerRoulette.zip",
         "IconUrl": "https://raw.githubusercontent.com/kathrindc/GlamourerRoulette/main/GlamourerRoulette/icon.png"
     }
 ]
