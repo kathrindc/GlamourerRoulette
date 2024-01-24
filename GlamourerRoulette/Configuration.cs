@@ -1,6 +1,7 @@
 ﻿using Dalamud.Configuration;
 using Dalamud.Plugin;
 using System;
+using System.Collections.Generic;
 
 namespace GlamourerRoulette
 {
@@ -9,7 +10,7 @@ namespace GlamourerRoulette
     {
         public int Version { get; set; } = 0;
 
-        public bool SomePropertyToBeSavedAndWithADefault { get; set; } = true;
+        public Dictionary<Guid, DesignPreference> Designs { get; set; } = [];
 
         // the below exist just to make saving less cumbersome
         [NonSerialized]

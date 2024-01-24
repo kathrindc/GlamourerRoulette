@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Dalamud.Game.Command;
 using Dalamud.IoC;
 using Dalamud.Plugin;
@@ -7,8 +8,10 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using Dalamud.Interface.Internal.Notifications;
+using Dalamud.Interface.Windowing;
 using Dalamud.Plugin.Services;
 using FFXIVClientStructs.FFXIV.Client.Game.UI;
+using GlamourerRoulette.Windows;
 
 namespace GlamourerRoulette
 {
@@ -19,43 +22,86 @@ namespace GlamourerRoulette
         private DalamudPluginInterface PluginInterface { get; init; }
         private ICommandManager CommandManager { get; init; }
         public Configuration Configuration { get; init; }
+        public WindowSystem WindowSystem = new("GlamourerRoulette");
+        
+        public ConfigWindow ConfigWindow { get; init; }
 
         private Random Random { get; init; }
-
+        private static int LastRandomNumber = -1; 
+        
         public Plugin(
             [RequiredVersion("1.0")] DalamudPluginInterface pluginInterface,
             [RequiredVersion("1.0")] ICommandManager commandManager)
         {
-            this.PluginInterface = pluginInterface;
-            this.CommandManager = commandManager;
-
-            this.Configuration = this.PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
-            this.Configuration.Initialize(this.PluginInterface);
-
-            if (!PluginInterface.InstalledPlugins.Select(p => p.Name).Contains("Glamourer"))
-            {
-                PluginInterface.UiBuilder.AddNotification("Glamourer is either not installed or unavailable for other reasons. Please check your xlplugins.", "Glamourer Roulette", NotificationType.Error, 8000U);
-                throw new Exception("glamourer unavailable");
-            }
-
+            PluginInterface = pluginInterface;
+            CommandManager = commandManager;
             Random = new Random();
 
-            this.CommandManager.AddHandler("/gr", new CommandInfo(OnPickRandom)
+            Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+            Configuration.Initialize(PluginInterface);
+
+            if (!IsGlamourerAvailable())
+            {
+                PluginInterface.UiBuilder.AddNotification("Glamourer is either not installed or unavailable for other reasons. Please check your xlplugins.", "Glamourer Roulette", NotificationType.Error, 8000U);
+            }
+
+            ConfigWindow = new ConfigWindow(this);
+            
+            WindowSystem.AddWindow(ConfigWindow);
+
+            CommandManager.AddHandler("/gr", new CommandInfo(OnPickRandom)
             {
                 HelpMessage = "Picks a random outfit from your saved Glamourer designs"
             });
+
+            CommandManager.AddHandler("/grconfig", new CommandInfo(OnOpenConfig)
+            {
+                HelpMessage = "Opens the configuration window for Glamourer Roulette"
+            });
+
+            PluginInterface.UiBuilder.Draw += Draw;
+            PluginInterface.UiBuilder.OpenConfigUi += OpenConfig;
+        }
+
+        private void Draw()
+        {
+            WindowSystem.Draw();
         }
 
         public void Dispose()
         {
-            this.CommandManager.RemoveHandler("/gr");
+            WindowSystem.RemoveAllWindows();
+            ConfigWindow.Dispose();
+            
+            CommandManager.RemoveHandler("/gr");
+            CommandManager.RemoveHandler("/grconfig");
         }
 
+        private bool IsGlamourerAvailable() =>
+            PluginInterface.InstalledPlugins.Select(p => p.Name).Contains("Glamourer");
+
+        private void OnOpenConfig(string command, string args) => OpenConfig();
+
+        private void OpenConfig()
+        {
+            if (!IsGlamourerAvailable())
+            {
+                PluginInterface.UiBuilder.AddNotification("Glamourer is either not installed or unavailable for other reasons. Please check your xlplugins.", "Glamourer Roulette", NotificationType.Error, 8000U);
+                return;
+            }
+            
+            ConfigWindow.IsOpen = true;
+        }
+        
         private void OnPickRandom(string command, string args)
         {
-            var getDesignList = PluginInterface.GetIpcSubscriber<(string, Guid)[]>("Glamourer.GetDesignList");
-            var applyByGuid = PluginInterface.GetIpcSubscriber<Guid, string, object>("Glamourer.ApplyByGuid");
-            var designs = getDesignList.InvokeFunc();
+            if (!IsGlamourerAvailable())
+            {
+                PluginInterface.UiBuilder.AddNotification("Glamourer is either not installed or unavailable for other reasons. Please check your xlplugins.", "Glamourer Roulette", NotificationType.Error, 8000U);
+                return;
+            }
+            
+            var designs = GetDesigns().Where(d => d.Enabled).ToList();
 
             if (!designs.Any())
             {
@@ -63,11 +109,31 @@ namespace GlamourerRoulette
                 return;
             }
             
-            var index = Random.Next(0, designs.Length - 1);
-            var design = designs[index].Item2;
-            var character = GetCurrentCharacterName();
+            var index = EnsureRandom(designs.Count - 1);
             
-            applyByGuid.InvokeAction(design, character);
+            ApplyDesign(designs[index].DesignId);
+            
+            PluginInterface.UiBuilder.AddNotification($"Switching to design \"{designs[index].Name}\"", "Glamourer Roulette", NotificationType.Info);
+        }
+
+        private int EnsureRandom(int upper)
+        {
+            if (upper == 0)
+            {
+                return 0;
+            }
+            
+            int value;
+
+            do
+            {
+                value = Random.Next(0, upper);
+            }
+            while (value == LastRandomNumber);
+
+            LastRandomNumber = value;
+
+            return value;
         }
 
         private static unsafe string GetCurrentCharacterName()
@@ -78,6 +144,43 @@ namespace GlamourerRoulette
             Marshal.Copy((IntPtr)playerStatePtr->CharacterName, nameBuffer, 0, 43);
 
             return Encoding.Default.GetString(nameBuffer).Replace("\0", "");
+        }
+
+        public IEnumerable<DesignPreference> GetDesigns()
+        {
+            var getDesignList = PluginInterface.GetIpcSubscriber<(string, Guid)[]>("Glamourer.GetDesignList");
+            var availableDesigns = getDesignList.InvokeFunc();
+            
+            ImportDesigns(availableDesigns);
+
+            return Configuration.Designs.Values.ToList();
+        }
+
+        private void ImportDesigns(IEnumerable<(string, Guid)> list)
+        {
+            foreach (var entry in list)
+            {
+                if (Configuration.Designs.ContainsKey(entry.Item2))
+                {
+                    continue;
+                }
+
+                var design = new DesignPreference()
+                {
+                    DesignId = entry.Item2,
+                    Name = entry.Item1,
+                };
+
+                Configuration.Designs.Add(entry.Item2, design);
+            }
+        }
+
+        private void ApplyDesign(Guid designId)
+        {
+            var applyByGuid = PluginInterface.GetIpcSubscriber<Guid, string, object>("Glamourer.ApplyByGuid");
+            var character = GetCurrentCharacterName();
+            
+            applyByGuid.InvokeAction(designId, character);
         }
     }
 }
