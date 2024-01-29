@@ -26,6 +26,8 @@ namespace GlamourerRoulette
         
         public ConfigWindow ConfigWindow { get; init; }
 
+        public string LastAppliedOutfit { get; private set; } = "N/A";
+
         private Random Random { get; init; }
         private static int LastRandomNumber = -1; 
         
@@ -110,6 +112,8 @@ namespace GlamourerRoulette
             }
             
             var index = EnsureRandom(designs.Count - 1);
+
+            LastAppliedOutfit = designs[index].Name;
             
             ApplyDesign(designs[index].DesignId);
             
@@ -146,19 +150,34 @@ namespace GlamourerRoulette
             return Encoding.Default.GetString(nameBuffer).Replace("\0", "");
         }
 
-        public IEnumerable<DesignPreference> GetDesigns()
+        public IEnumerable<DesignPreference> GetDesigns(bool backCheck = false)
         {
             var getDesignList = PluginInterface.GetIpcSubscriber<(string, Guid)[]>("Glamourer.GetDesignList");
             var availableDesigns = getDesignList.InvokeFunc();
             
-            ImportDesigns(availableDesigns);
+            ImportDesigns(availableDesigns, backCheck);
 
             return Configuration.Designs.Values.ToList();
         }
 
-        private void ImportDesigns(IEnumerable<(string, Guid)> list)
+        private void ImportDesigns(IEnumerable<(string, Guid)> list, bool backCheck = false)
         {
-            foreach (var entry in list)
+            var tuples = list.ToList();
+            
+            if (backCheck)
+            {
+                var ids = tuples.Select(t => t.Item2).ToList();
+                var remove = Configuration.Designs.Keys
+                                          .Where(stored => ids.All(id => id != stored))
+                                          .ToList();
+
+                foreach (var id in remove)
+                {
+                    Configuration.Designs.Remove(id);
+                }
+            }
+
+            foreach (var entry in tuples)
             {
                 if (Configuration.Designs.ContainsKey(entry.Item2))
                 {

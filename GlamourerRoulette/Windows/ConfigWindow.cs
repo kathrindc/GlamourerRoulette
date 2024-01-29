@@ -26,18 +26,31 @@ public class ConfigWindow : Window, IDisposable
     public override void OnOpen()
     {
         base.OnOpen();
-        
-        list = plugin.GetDesigns().OrderBy(d => d.Name).ToList();
+        ReloadList(false);
     }
 
     public void Dispose()
     {
     }
 
+    private void ReloadList(bool backCheck)
+    {
+        list = plugin.GetDesigns(backCheck).OrderBy(d => d.Name).ToList();
+    }
+
     public override void Draw()
     {
+        ImGui.Text($"Last design: " + plugin.LastAppliedOutfit);
+        ImGui.Spacing();
+        
+        if (ImGui.Button("Reload Designs"))
+        {
+            ReloadList(true);
+        }
+        
         ImGui.PushItemWidth(-1);
-        ImGui.BeginListBox("Allowed Designs", new Vector2(-1, -1));
+        ImGui.BeginListBox("", new Vector2(-1, -1));
+        
         foreach (var design in list)
         {
             var initialEnabledState = design.Enabled;
@@ -59,6 +72,7 @@ public class ConfigWindow : Window, IDisposable
                 ImGui.PopStyleColor();
             }
         }
+        
         ImGui.EndListBox();
         ImGui.PopItemWidth();
     }
